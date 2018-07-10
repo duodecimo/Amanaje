@@ -9,7 +9,7 @@ import argparse
 from datetime import datetime
 import shutil
 
-def show_webcam(mirror=False, numCam=0):
+def show_webcam(mirror=False, numCam=-1):
   global img, txt
   txt = ' '
   frequency = 100 # Hertz
@@ -17,18 +17,18 @@ def show_webcam(mirror=False, numCam=0):
   cam = cv2.VideoCapture(numCam)
   time.sleep(0.5)
   start_time = time.time()
-  print('testando!')
+  cv2.namedWindow('Amanajé', cv2.WINDOW_NORMAL)
   while True:
     ret_val, img = cam.read()
     if mirror: 
       img = cv2.flip(img, 1)
     height, width = img.shape[1::-1]
-    cv2.setMouseCallback('my webcam', onMouse)
+    cv2.setMouseCallback('Amanajé', onMouse)
     cv2.putText(img, txt, (int(width*0.5), int(height*0.05)), cv2.FONT_HERSHEY_TRIPLEX, 0.8, (255, 0, 0), 2, cv2.LINE_AA)
-    cv2.imshow('my webcam', img)
+    cv2.imshow('Amanajé', img)
     elapsed_time = time.time() - start_time
-    key = np.int16(cv2.waitKey(1))
-    if key == 27:
+    #if cv2.waitKey(1) & 0xFF == ord('q'):
+    if cv2.waitKey(1) & 0xFF == 27:
       break  # esc to quit
   cv2.destroyAllWindows()
 
