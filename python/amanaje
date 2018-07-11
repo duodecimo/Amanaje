@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+# by duo July 2018
+
+import tkinter
+import cv2
+import PIL.Image, PIL.ImageTk
+import time
+
+class App:
+    id = None
+    def __init__(self, window, window_title, video_source=-1):
+        self.window = window
+        window.bind('<Escape>', lambda e: window.quit())
+        self.window.title(window_title)
+        self.video_source = video_source
+        self.video_width = 320
+        self.video_height = 240
+        self.screen_width = self.window.winfo_screenwidth()
+        self.screen_height = self.window.winfo_screenheight() - 50
+
+        # open video source (by default this will try to open the computer webcam)
+        self.vid = MyVideoCapture(self.video_width, self.video_height, self.video_source)
+
+        # Create a canvas that can fit the above video source size
+        self.canvas = tkinter.Canvas(window, width = self.screen_width, height = self.screen_height)
+        self.canvas.pack()
+        self.window.bind("<B1-Motion>", self.mouseDragged)
+        self.canvas.create_text(120, 230, anchor=tkinter.W, font=("Liberation sans", 12, "bold"),
+            text='Amanajé class on production!')
+
+        # Button that lets the user take a snapshot
+        self.btn_snapshot=tkinter.Button(window, text="Snapshot", width=50, command=self.snapshot)
+        self.btn_snapshot.pack(anchor=tkinter.CENTER, expand=True)
+
+        # After it is called once, the update method will be automatically called every delay milliseconds
+        self.delay = 15
+        self.update()
+
+        self.window.mainloop()
+
+    def snapshot(self):
+        # Get a frame from the video source
+        ret, frame = self.vid.get_frame()
+
+        if ret:
+            cv2.imwrite("frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
+    def update(self):
+        # Get a frame from the video source
+        ret, frame = self.vid.get_frame()
+
+        if ret:
+            self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
+            self.canvas.create_image(self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20), image = self.photo, anchor = tkinter.NW)
+
+        self.window.after(self.delay, self.update)
+
+    def mouseDragged(self, event):
+      mtext = 'mouse(' + str(event.x) + ', ' + str(event.y) + ')'
+      self.canvas.delete(self.id)
+      self.id = self.canvas.create_text(20, 30, anchor=tkinter.W, font=("Liberation sans", 12, "bold"),
+            text=mtext)
+
+
+class MyVideoCapture:
+    def __init__(self, video_width, video_height, video_source=-1):
+        # Open the video source
+        self.vid = cv2.VideoCapture(video_source)
+        if not self.vid.isOpened():
+            raise ValueError("Unable to open video source", video_source)
+
+        # Get video source width and height
+        self.vid.set(cv2.CAP_PROP_FRAME_WIDTH, video_width)
+        self.vid.set(cv2.CAP_PROP_FRAME_HEIGHT, video_height)
+
+    def get_frame(self):
+        if self.vid.isOpened():
+            ret, frame = self.vid.read()
+            if ret:
+                # Return a boolean success flag and the current frame converted to BGR
+                return (ret, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            else:
+                return (ret, None)
+        else:
+            return (ret, None)
+
+    # Release the video source when the object is destroyed
+    def __del__(self):
+        if self.vid.isOpened():
+            self.vid.release()
+
+# Create a window and pass it to the Application object
+App(tkinter.Tk(), "Amanajé")
