@@ -22,10 +22,11 @@ class App:
 
         # Create a canvas
         self.canvas = tkinter.Canvas(window, bg='white', width = self.screen_width, height = self.screen_height)
+        self.canvas.grid(row=1, columnspan=7)
+        self.webcam_button = tkinter.Button(self.window, text='webcam', command=self.toggle_webcam)
+        self.webcam_button.grid(row=0, column=0)
+        self.activate_webcam = True
         self.setup_paint()
-        self.setup_webcam()
-
-
         self.window.mainloop()
 
     def snapshot(self):
@@ -41,40 +42,48 @@ class App:
 
         if ret:
             self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
-            self.canvas.create_image(self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20), image = self.photo, anchor = tkinter.NW)
+            self.canvas.create_image(self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20), tags='cam_tag', image = self.photo, anchor = tkinter.NW)
 
-        self.window.after(self.delay, self.update)
+        self.id_webcam = self.window.after(self.delay, self.update)
 
-    def setup_webcam(self):
-        self.video_width = 320
-        self.video_height = 240
-        # open video source (by default this will try to open the computer webcam)
-        self.vid = MyVideoCapture(self.video_width, self.video_height, self.video_source)
-        # After it is called once, the update method will be automatically called every delay milliseconds
-        self.delay = 15
-        self.update()
+    def toggle_webcam(self):
+        if self.activate_webcam:
+            self.activate_webcam = not self.activate_webcam
+            self.webcam_button.config(relief=tkinter.SUNKEN)
+            self.video_width = 320
+            self.video_height = 240
+            # open video source (by default this will try to open the computer webcam)
+            self.vid = MyVideoCapture(self.video_width, self.video_height, self.video_source)
+            # After it is called once, the update method will be automatically called every delay milliseconds
+            self.delay = 15
+            self.update()
+        else:
+            self.activate_webcam = not self.activate_webcam
+            self.webcam_button.config(relief=tkinter.RAISED)
+            self.window.after_cancel(self.id_webcam)
+            self.canvas.delete('cam_tag')
+            del self.vid
 
     def setup_paint(self):
 
-        self.canvas.grid(row=1, columnspan=6)
 
         self.pen_button = tkinter.Button(self.window, text='pen', command=self.use_pen)
-        self.pen_button.grid(row=0, column=0)
+        self.pen_button.grid(row=0, column=1)
 
         self.brush_button = tkinter.Button(self.window, text='brush', command=self.use_brush)
-        self.brush_button.grid(row=0, column=1)
+        self.brush_button.grid(row=0, column=2)
 
         self.color_button = tkinter.Button(self.window, text='color', command=self.choose_color)
-        self.color_button.grid(row=0, column=2)
+        self.color_button.grid(row=0, column=3)
 
         self.eraser_button = tkinter.Button(self.window, text='eraser', command=self.use_eraser)
-        self.eraser_button.grid(row=0, column=3)
+        self.eraser_button.grid(row=0, column=4)
 
         self.choose_size_button = tkinter.Scale(self.window, from_=1, to=10, orient=tkinter.HORIZONTAL)
-        self.choose_size_button.grid(row=0, column=4)
+        self.choose_size_button.grid(row=0, column=5)
 
         self.snapshot_button = tkinter.Button(self.window, text='snapshot', command=self.snapshot)
-        self.snapshot_button.grid(row=0, column=5)
+        self.snapshot_button.grid(row=0, column=6)
 
         self.old_x = None
         self.old_y = None
