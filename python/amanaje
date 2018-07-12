@@ -5,6 +5,7 @@ import tkinter
 import cv2
 import PIL.Image, PIL.ImageTk
 import time
+import pyscreenshot as ImageGrab
 from tkinter.colorchooser import askcolor
 
 class App:
@@ -30,6 +31,7 @@ class App:
         self.webcam_button.pack(side="left", padx=4, pady=1)
         self.activate_webcam = True
         self.setup_paint()
+        self.grab_canvas()
         self.window.mainloop()
 
     def snapshot(self):
@@ -49,6 +51,17 @@ class App:
 
         self.id_webcam = self.window.after(self.delay, self.update)
 
+    def grab_canvas(self):
+        #x=root.winfo_rootx()+widget.winfo_x()
+        #y=root.winfo_rooty()+widget.winfo_y()
+        #x1=x+widget.winfo_width()
+        #y1=y+widget.winfo_height()
+        filename = "/home/duo/extra/amanajeMovie/frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".png"
+        im=ImageGrab.grab(bbox=(0,0,self.screen_width,self.screen_height))
+        im.save(filename)
+        self.cdelay = 24
+        self.id_grab_canvas = self.window.after(self.cdelay, self.grab_canvas)
+
     def toggle_webcam(self):
         if self.activate_webcam:
             self.activate_webcam = not self.activate_webcam
@@ -58,7 +71,7 @@ class App:
             # open video source (by default this will try to open the computer webcam)
             self.vid = MyVideoCapture(self.video_width, self.video_height, self.video_source)
             # After it is called once, the update method will be automatically called every delay milliseconds
-            self.delay = 15
+            self.delay = 20
             self.update()
         else:
             self.activate_webcam = not self.activate_webcam
