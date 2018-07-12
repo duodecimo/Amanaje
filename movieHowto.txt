@@ -1,0 +1,1 @@
+ffmpeg -r 2 -pattern_type glob -i *.png -r 25 -vf transpose=1 amanaje.mp4
