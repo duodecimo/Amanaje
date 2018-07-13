@@ -3,10 +3,10 @@
 
 import tkinter
 import cv2
-import PIL.Image, PIL.ImageTk
 import time
 import pyscreenshot as ImageGrab
 from tkinter.colorchooser import askcolor
+from PIL import Image,ImageDraw, ImageTk
 
 class App:
 
@@ -25,13 +25,21 @@ class App:
         self.frame = tkinter.Frame()
         self.frame.pack(side = 'top', fill = 'both')
         self.canvas = tkinter.Canvas(window, bg='white', width = self.screen_width, height = self.screen_height)
+        self.imagecanvas=Image.new("RGB",(self.screen_width,self.screen_height),(255,255,255))
+        self.drawcanvas=ImageDraw.Draw(self.imagecanvas)
         #self.canvas.grid(row=1, columnspan=7)
         self.canvas.pack()
         self.webcam_button = tkinter.Button(self.frame, text='webcam', command=self.toggle_webcam)
         self.webcam_button.pack(side="left", padx=4, pady=1)
-        self.activate_webcam = True
+        self.webcam_capturing = False
+        self.record_button = tkinter.Button(self.frame, text='record', command=self.toggle_record)
+        self.record_button.pack(side="left", padx=4, pady=1)
+        self.recording = False
         self.setup_paint()
-        self.grab_canvas()
+        #lets use imagecanvas instad
+        #self.grab_canvas()
+        self.delay = 20
+        self.update()
         self.window.mainloop()
 
     def snapshot(self):
@@ -42,14 +50,22 @@ class App:
             cv2.imwrite("frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
     def update(self):
-        # Get a frame from the video source
-        ret, frame = self.vid.get_frame()
-
-        if ret:
-            self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
-            self.canvas.create_image(self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20), tags='cam_tag', image = self.photo, anchor = tkinter.NW)
-
-        self.id_webcam = self.window.after(self.delay, self.update)
+        if self.webcam_capturing:
+            # Get a frame from the video source
+            ret, frame = self.vid.get_frame()
+            if ret:
+                self.photo = ImageTk.PhotoImage(image = Image.fromarray(frame))
+                self.canvas.create_image(self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20), tags='cam_tag', image = self.photo, anchor = tkinter.NW)
+                #do it on image canvas too
+                offset =  (self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20))
+                #self.imagecanvas.paste(self.photo, offset)
+                self.imagecanvas.paste(Image.fromarray(frame), offset)
+        if self.recording:
+            #save canvas to file
+            filename = "/home/duo/extra/amanajeMovie/frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".png"
+            self.imagecanvas.save(filename)
+        # next update loop
+        self.window.after(self.delay, self.update)
 
     def grab_canvas(self):
         #x=root.winfo_rootx()+widget.winfo_x()
@@ -63,22 +79,23 @@ class App:
         self.id_grab_canvas = self.window.after(self.cdelay, self.grab_canvas)
 
     def toggle_webcam(self):
-        if self.activate_webcam:
-            self.activate_webcam = not self.activate_webcam
+        if not self.webcam_capturing:
+            self.webcam_capturing = not self.webcam_capturing
             self.webcam_button.config(relief=tkinter.SUNKEN)
             self.video_width = 320
             self.video_height = 240
             # open video source (by default this will try to open the computer webcam)
             self.vid = MyVideoCapture(self.video_width, self.video_height, self.video_source)
             # After it is called once, the update method will be automatically called every delay milliseconds
-            self.delay = 20
-            self.update()
         else:
-            self.activate_webcam = not self.activate_webcam
+            self.webcam_capturing = not self.webcam_capturing
             self.webcam_button.config(relief=tkinter.RAISED)
             self.window.after_cancel(self.id_webcam)
             self.canvas.delete('cam_tag')
             del self.vid
+
+    def toggle_record(self):
+        self.recording = not self.recording
 
     def setup_paint(self):
 
@@ -136,6 +153,9 @@ class App:
             self.canvas.create_line(self.old_x, self.old_y, event.x, event.y,
                                width=self.line_width, fill=paint_color,
                                capstyle=tkinter.ROUND, smooth=tkinter.TRUE, splinesteps=36)
+            # do the same for the canvas image
+            self.drawcanvas.line(((self.old_x,self.old_y),(event.x,event.y)), paint_color, self.line_width)
+
         self.old_x = event.x
         self.old_y = event.y
 
