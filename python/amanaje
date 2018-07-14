@@ -18,6 +18,8 @@ class App:
     DEFAULT_COLOR = 'black'
 
     def __init__(self, window, window_title, video_source=-1):
+        # delay is used by update function
+        self.delay = 2
         self.window = window
         self.video_source = video_source
         window.bind('<Escape>', lambda e: window.quit())
@@ -44,7 +46,6 @@ class App:
         if messagebox.askyesno("Movie", "Clear folder /tmp/amanajeMovieImages?"):
             shutil.rmtree('/tmp/amanajeMovieImages/')
             self.assure_path_exists("/tmp/amanajeMovieImages/")
-        self.delay = 20
         self.update()
         self.window.mainloop()
 
@@ -72,7 +73,7 @@ class App:
                 self.imagecanvas.paste(Image.fromarray(frame), offset)
         if self.recording:
             #save canvas to file
-            filename = "/tmp/amanajeMovieImages/frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".png"
+            filename = "/tmp/amanajeMovieImages/frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".jpg"
             self.imagecanvas.save(filename)
         # next update loop
         self.window.after(self.delay, self.update)
