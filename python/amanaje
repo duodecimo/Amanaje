@@ -6,7 +6,11 @@ import cv2
 import time
 import pyscreenshot as ImageGrab
 from tkinter.colorchooser import askcolor
+from tkinter import messagebox
 from PIL import Image,ImageDraw, ImageTk
+from datetime import datetime
+import os
+import shutil
 
 class App:
 
@@ -36,11 +40,18 @@ class App:
         self.record_button.pack(side="left", padx=4, pady=1)
         self.recording = False
         self.setup_paint()
-        #lets use imagecanvas instad
-        #self.grab_canvas()
+        self.assure_path_exists("/tmp/amanajeMovieImages/")
+        if messagebox.askyesno("Movie", "Clear folder /tmp/amanajeMovieImages?"):
+            shutil.rmtree('/tmp/amanajeMovieImages/')
+            self.assure_path_exists("/tmp/amanajeMovieImages/")
         self.delay = 20
         self.update()
         self.window.mainloop()
+
+    def assure_path_exists(self, path):
+        dir = os.path.dirname(path)
+        if not os.path.exists(dir):
+                os.makedirs(dir)
 
     def snapshot(self):
         # Get a frame from the video source
@@ -61,21 +72,10 @@ class App:
                 self.imagecanvas.paste(Image.fromarray(frame), offset)
         if self.recording:
             #save canvas to file
-            filename = "/home/duo/extra/amanajeMovie/frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".png"
+            filename = "/tmp/amanajeMovieImages/frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".png"
             self.imagecanvas.save(filename)
         # next update loop
         self.window.after(self.delay, self.update)
-
-    def grab_canvas(self):
-        #x=root.winfo_rootx()+widget.winfo_x()
-        #y=root.winfo_rooty()+widget.winfo_y()
-        #x1=x+widget.winfo_width()
-        #y1=y+widget.winfo_height()
-        filename = "/home/duo/extra/amanajeMovie/frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".png"
-        im=ImageGrab.grab(bbox=(0,0,self.screen_width,self.screen_height))
-        im.save(filename)
-        self.cdelay = 24
-        self.id_grab_canvas = self.window.after(self.cdelay, self.grab_canvas)
 
     def toggle_webcam(self):
         if not self.webcam_capturing:
