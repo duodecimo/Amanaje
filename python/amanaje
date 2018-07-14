@@ -58,7 +58,6 @@ class App:
                 self.canvas.create_image(self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20), tags='cam_tag', image = self.photo, anchor = tkinter.NW)
                 #do it on image canvas too
                 offset =  (self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20))
-                #self.imagecanvas.paste(self.photo, offset)
                 self.imagecanvas.paste(Image.fromarray(frame), offset)
         if self.recording:
             #save canvas to file
@@ -90,12 +89,17 @@ class App:
         else:
             self.webcam_capturing = not self.webcam_capturing
             self.webcam_button.config(relief=tkinter.RAISED)
-            self.window.after_cancel(self.id_webcam)
             self.canvas.delete('cam_tag')
+            offset =  (self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20))
+            self.imagecanvas.paste(Image.new("RGB",(self.video_width,self.video_height),(255,255,255)), offset)
             del self.vid
 
     def toggle_record(self):
         self.recording = not self.recording
+        if self.recording:
+            self.record_button.config(relief=tkinter.SUNKEN)
+        else:
+            self.record_button.config(relief=tkinter.RAISED)
 
     def setup_paint(self):
 
