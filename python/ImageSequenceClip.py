@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-from ..VideoClip import VideoClip
+from VideoClip import VideoClip
 from imageio import imread
 
 

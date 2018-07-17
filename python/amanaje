@@ -3,7 +3,6 @@
 
 import tkinter
 import cv2
-import time
 import pyscreenshot as ImageGrab
 from tkinter.colorchooser import askcolor
 from tkinter import messagebox
@@ -19,7 +18,7 @@ class App:
 
     def __init__(self, window, window_title, video_source=-1):
         # delay is used by update function
-        self.delay = 2
+        self.delay = 25
         self.window = window
         self.video_source = video_source
         window.bind('<Escape>', lambda e: window.quit())
@@ -59,7 +58,7 @@ class App:
         ret, frame = self.vid.get_frame()
 
         if ret:
-            cv2.imwrite("frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            cv2.imwrite("frame-" + datetime.now().strftime("%H:%M:%S.%f") + ".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
     def update(self):
         if self.webcam_capturing:
@@ -73,7 +72,7 @@ class App:
                 self.imagecanvas.paste(Image.fromarray(frame), offset)
         if self.recording:
             #save canvas to file
-            filename = "/tmp/amanajeMovieImages/frame-" + time.strftime("%d-%m-%Y-%H-%M-%S") + ".jpg"
+            filename = "/tmp/amanajeMovieImages/frame-" + datetime.now().strftime("%H:%M:%S.%f") + ".jpg"
             self.imagecanvas.save(filename)
         # next update loop
         self.window.after(self.delay, self.update)
