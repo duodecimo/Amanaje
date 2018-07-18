@@ -38,6 +38,7 @@ class App:
         #self.canvas.grid(row=1, columnspan=7)
         self.canvas.pack()
         self.kinds = [self.canvas.create_line, self.canvas.create_oval, self.canvas.create_rectangle]
+        self.pilkinds = [self.drawcanvas.line, self.drawcanvas.ellipse, self.drawcanvas.rectangle]
         self.webcam_button = tkinter.Button(self.frame, text='webcam', command=self.toggle_webcam)
         self.webcam_button.pack(side="left", padx=4, pady=1)
         self.webcam_capturing = False
@@ -168,6 +169,7 @@ class App:
     def onStart(self, event):
         self.start = event
         self.drawn = None
+        self.erase_grow = None
 
     def paint(self, event):
         self.line_width = self.choose_size_button.get()
@@ -184,12 +186,22 @@ class App:
         else:
             if self.drawn:
                 self.canvas.delete(self.drawn)
+            if self.erase_grow:
+                # do the same for the canvas image
+                self.shape = self.pilkinds[self.kind]
+                self.shape(self.erase_grow, 'white', self.line_width)
             self.shape = self.kinds[self.kind]
-            self.objectId = self.shape(self.start.x, self.start.y, event.x, event.y,  width=self.line_width, outline=paint_color)
+            self.objectId = self.shape(self.start.x, self.start.y, event.x, event.y, width=self.line_width, outline=paint_color)
+            # do the same for the canvas image
+            self.shape = self.pilkinds[self.kind]
+            self.shape(((self.start.x,self.start.y),(event.x,event.y)), paint_color, self.line_width)
             self.drawn = self.objectId
+            self.erase_grow = ((self.start.x,self.start.y),(event.x,event.y))
 
     def reset(self, event):
         self.old_x, self.old_y = None, None
+        self.erase_grow = None
+        self.drawn = None
 
 
 class MyVideoCapture:
