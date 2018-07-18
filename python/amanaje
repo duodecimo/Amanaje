@@ -150,7 +150,7 @@ class App:
 
     def use_rect(self):
         self.activate_button(self.rect_button)
-        self.kind = self.PEN
+        self.kind = self.RECT
 
     def choose_color(self):
         self.eraser_on = False
@@ -182,10 +182,11 @@ class App:
             self.old_x = event.x
             self.old_y = event.y
         else:
-            if self.drawn: canvas.delete(self.drawn)
-            self.shape = kinds(self.kind)
-            self.objectId = self.shape(self.start.x, self.start.y, event.x, event.y)
-            self.drawn = objectId
+            if self.drawn:
+                self.canvas.delete(self.drawn)
+            self.shape = self.kinds[self.kind]
+            self.objectId = self.shape(self.start.x, self.start.y, event.x, event.y,  width=self.line_width, outline=paint_color)
+            self.drawn = self.objectId
 
     def reset(self, event):
         self.old_x, self.old_y = None, None
