@@ -13,15 +13,15 @@ import shutil
 
 class App:
 
-    DEFAULT_PEN_SIZE = 5.0
-    DEFAULT_COLOR = 'black'
-
     def __init__(self, window, window_title, video_source=-1):
+        self.DEFAULT_PEN_SIZE = 5.0
+        self.DEFAULT_COLOR = 'black'
+        self.PARALLEL = True
         self.PEN = 0
         self.OVAL = 1
         self.RECT = 2
         # delay is used by update function
-        self.delay = 25
+        self.delay = 40
         self.window = window
         self.video_source = video_source
         window.bind('<Escape>', lambda e: window.quit())
@@ -33,12 +33,14 @@ class App:
         self.frame = tkinter.Frame()
         self.frame.pack(side = 'top', fill = 'both')
         self.canvas = tkinter.Canvas(window, bg='white', width = self.screen_width, height = self.screen_height)
-        self.imagecanvas=Image.new("RGB",(self.screen_width,self.screen_height),(255,255,255))
-        self.drawcanvas=ImageDraw.Draw(self.imagecanvas)
+        if self.PARALLEL:
+            self.imagecanvas=Image.new("RGB",(self.screen_width,self.screen_height),(255,255,255))
+            self.drawcanvas=ImageDraw.Draw(self.imagecanvas)
         #self.canvas.grid(row=1, columnspan=7)
         self.canvas.pack()
         self.kinds = [self.canvas.create_line, self.canvas.create_oval, self.canvas.create_rectangle]
-        self.pilkinds = [self.drawcanvas.line, self.drawcanvas.ellipse, self.drawcanvas.rectangle]
+        if self.PARALLEL:
+            self.pilkinds = [self.drawcanvas.line, self.drawcanvas.ellipse, self.drawcanvas.rectangle]
         self.webcam_button = tkinter.Button(self.frame, text='webcam', command=self.toggle_webcam)
         self.webcam_button.pack(side="left", padx=4, pady=1)
         self.webcam_capturing = False
@@ -76,9 +78,15 @@ class App:
                 offset =  (self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20))
                 self.imagecanvas.paste(Image.fromarray(frame), offset)
         if self.recording:
+            
             #save canvas to file
-            filename = "/tmp/amanajeMovieImages/frame-" + datetime.now().strftime("%H:%M:%S.%f") + ".jpg"
-            self.imagecanvas.save(filename)
+            filename = "/tmp/amanajeMovieImages/frame-"  + datetime.now().strftime("%H:%M:%S.%f") + ".jpg"
+            if self.PARALLEL:
+                # using paralel drawing
+                self.imagecanvas.save(filename)
+            else:
+                #using Pil image grabber
+                ImageGrab.grab((self.canvas.winfo_x(), self.canvas.winfo_y(), self.screen_width,self.screen_height)).save(filename)
         # next update loop
         self.window.after(self.delay, self.update)
 
@@ -179,24 +187,42 @@ class App:
                 #if self.drawn: canvas.delete(self.drawn)
                 #self.objectId = 
                 self.canvas.create_line(self.old_x, self.old_y, event.x, event.y, width=self.line_width, fill=paint_color, capstyle=tkinter.ROUND, smooth=tkinter.TRUE, splinesteps=36)
-                # do the same for the canvas image
-                self.drawcanvas.line(((self.old_x,self.old_y),(event.x,event.y)), paint_color, self.line_width)
+                if self.PARALLEL:
+                    # do the same for the canvas image
+                    self.drawcanvas.line(((self.old_x,self.old_y),(event.x,event.y)), paint_color, self.line_width)
             self.old_x = event.x
             self.old_y = event.y
         else:
             if self.drawn:
                 self.canvas.delete(self.drawn)
             if self.erase_grow:
-                # do the same for the canvas image
-                self.shape = self.pilkinds[self.kind]
-                self.shape(self.erase_grow, 'white', self.line_width)
+                if self.PARALLEL:
+                    # do the same for the canvas image
+                    self.shape = self.pilkinds[self.kind]
+                    tmp__ = self.erase_grow
+                    print('erase : ', tmp__, ' width = ', self.line_width)
+                    for i in range(self.line_width):
+                        for j in range(self.line_width):
+                            tmp__ = (tuple(x+i for x in self.erase_grow[0]),tuple(x+j for x in self.erase_grow[1]))
+                            self.shape(tmp__, fill=None, outline='white')
+                            if(i==0 and j==0): print(i, ', ',j, '- ', tmp__)
+                    print(i, ', ',j, '- ', tmp__)
             self.shape = self.kinds[self.kind]
             self.objectId = self.shape(self.start.x, self.start.y, event.x, event.y, width=self.line_width, outline=paint_color)
-            # do the same for the canvas image
-            self.shape = self.pilkinds[self.kind]
-            self.shape(((self.start.x,self.start.y),(event.x,event.y)), paint_color, self.line_width)
+            if self.PARALLEL:
+                # do the same for the canvas image
+                self.shape = self.pilkinds[self.kind]
+                self.erase_grow = ((self.start.x,self.start.y),(event.x,event.y))
+                tmp__ = self.erase_grow
+                print('draw  : ', tmp__, ' width = ', self.line_width)
+                for i in range(self.line_width):
+                    for j in range(self.line_width):
+                        tmp__ = (tuple(x+i for x in self.erase_grow[0]),tuple(x+j for x in self.erase_grow[1]))
+                        self.shape(tmp__, fill=None, outline=paint_color)
+                        if(i==0 and j==0): print(i, ', ',j, '- ', tmp__)
+                print(i, ', ',j, '- ', tmp__)
+                
             self.drawn = self.objectId
-            self.erase_grow = ((self.start.x,self.start.y),(event.x,event.y))
 
     def reset(self, event):
         self.old_x, self.old_y = None, None
