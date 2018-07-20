@@ -3,6 +3,7 @@
 
 import tkinter
 import cv2
+import pyscreenshot as ImageGrab
 from tkinter.colorchooser import askcolor
 from tkinter import messagebox
 from PIL import Image,ImageDraw, ImageTk
@@ -15,6 +16,7 @@ class App:
     def __init__(self, window, window_title, video_source=-1):
         self.DEFAULT_PEN_SIZE = 5.0
         self.DEFAULT_COLOR = 'black'
+        self.PARALLEL = True
         self.PEN = 0
         self.OVAL = 1
         self.RECT = 2
@@ -31,13 +33,25 @@ class App:
         self.frame = tkinter.Frame()
         self.frame.pack(side = 'top', fill = 'both')
         self.canvas = tkinter.Canvas(window, bg='white', width = self.screen_width, height = self.screen_height)
+        if self.PARALLEL:
+            self.imagecanvas=Image.new("RGB",(self.screen_width,self.screen_height),(255,255,255))
+            self.drawcanvas=ImageDraw.Draw(self.imagecanvas)
+        #self.canvas.grid(row=1, columnspan=7)
         self.canvas.pack()
         self.kinds = [self.canvas.create_line, self.canvas.create_oval, self.canvas.create_rectangle]
+        if self.PARALLEL:
+            self.pilkinds = [self.drawcanvas.line, self.drawcanvas.ellipse, self.drawcanvas.rectangle]
         self.webcam_button = tkinter.Button(self.frame, text='webcam', command=self.toggle_webcam)
         self.webcam_button.pack(side="left", padx=4, pady=1)
         self.webcam_capturing = False
+        self.record_button = tkinter.Button(self.frame, text='record', command=self.toggle_record)
+        self.record_button.pack(side="left", padx=4, pady=1)
+        self.recording = False
         self.setup_paint()
-        self.assure_path_exists("/tmp/amanaje/resources/")
+        self.assure_path_exists("/tmp/amanajeMovieImages/")
+        if messagebox.askyesno("Movie", "Clear folder /tmp/amanajeMovieImages?"):
+            shutil.rmtree('/tmp/amanajeMovieImages/')
+            self.assure_path_exists("/tmp/amanajeMovieImages/")
         self.update()
         self.window.mainloop()
 
@@ -46,6 +60,13 @@ class App:
         if not os.path.exists(dir):
                 os.makedirs(dir)
 
+    def snapshot(self):
+        # Get a frame from the video source
+        ret, frame = self.vid.get_frame()
+
+        if ret:
+            cv2.imwrite("frame-" + datetime.now().strftime("%H:%M:%S.%f") + ".jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
     def update(self):
         if self.webcam_capturing:
             # Get a frame from the video source
@@ -53,6 +74,19 @@ class App:
             if ret:
                 self.photo = ImageTk.PhotoImage(image = Image.fromarray(frame))
                 self.canvas.create_image(self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20), tags='cam_tag', image = self.photo, anchor = tkinter.NW)
+                #do it on image canvas too
+                offset =  (self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20))
+                self.imagecanvas.paste(Image.fromarray(frame), offset)
+        if self.recording:
+            
+            #save canvas to file
+            filename = "/tmp/amanajeMovieImages/frame-"  + datetime.now().strftime("%H:%M:%S.%f") + ".jpg"
+            if self.PARALLEL:
+                # using paralel drawing
+                self.imagecanvas.save(filename)
+            else:
+                #using Pil image grabber
+                ImageGrab.grab((self.canvas.winfo_x(), self.canvas.winfo_y(), self.screen_width,self.screen_height)).save(filename)
         # next update loop
         self.window.after(self.delay, self.update)
 
@@ -72,6 +106,13 @@ class App:
             offset =  (self.screen_width - (self.video_width+20), self.screen_height - (self.video_height+20))
             self.imagecanvas.paste(Image.new("RGB",(self.video_width,self.video_height),(255,255,255)), offset)
             del self.vid
+
+    def toggle_record(self):
+        self.recording = not self.recording
+        if self.recording:
+            self.record_button.config(relief=tkinter.SUNKEN)
+        else:
+            self.record_button.config(relief=tkinter.RAISED)
 
     def setup_paint(self):
 
@@ -93,6 +134,9 @@ class App:
 
         self.choose_size_button = tkinter.Scale(self.frame, from_=1, to=10, orient=tkinter.HORIZONTAL)
         self.choose_size_button.pack(side="left", padx=4, pady=1)
+
+        self.snapshot_button = tkinter.Button(self.frame, text='snapshot', command=self.snapshot)
+        self.snapshot_button.pack(side="left", padx=4, pady=1)
 
         self.old_x = None
         self.old_y = None
@@ -133,24 +177,56 @@ class App:
     def onStart(self, event):
         self.start = event
         self.drawn = None
+        self.erase_grow = None
 
     def paint(self, event):
         self.line_width = self.choose_size_button.get()
         paint_color = 'white' if self.eraser_on else self.color
         if self.kind == self.PEN:
             if self.old_x and self.old_y:
+                #if self.drawn: canvas.delete(self.drawn)
+                #self.objectId = 
                 self.canvas.create_line(self.old_x, self.old_y, event.x, event.y, width=self.line_width, fill=paint_color, capstyle=tkinter.ROUND, smooth=tkinter.TRUE, splinesteps=36)
+                if self.PARALLEL:
+                    # do the same for the canvas image
+                    self.drawcanvas.line(((self.old_x,self.old_y),(event.x,event.y)), paint_color, self.line_width)
             self.old_x = event.x
             self.old_y = event.y
         else:
             if self.drawn:
                 self.canvas.delete(self.drawn)
+            if self.erase_grow:
+                if self.PARALLEL:
+                    # do the same for the canvas image
+                    self.shape = self.pilkinds[self.kind]
+                    tmp__ = self.erase_grow
+                    #print('erase : ', tmp__, ' width = ', self.line_width)
+                    for i in range(self.line_width):
+                        for j in range(self.line_width):
+                            tmp__ = (tuple(x+i for x in self.erase_grow[0]),tuple(x+j for x in self.erase_grow[1]))
+                            self.shape(tmp__, fill=None, outline='white')
+                            #if(i==0 and j==0): print(i, ', ',j, '- ', tmp__)
+                    #print(i, ', ',j, '- ', tmp__)
             self.shape = self.kinds[self.kind]
             self.objectId = self.shape(self.start.x, self.start.y, event.x, event.y, width=self.line_width, outline=paint_color)
+            if self.PARALLEL:
+                # do the same for the canvas image
+                self.shape = self.pilkinds[self.kind]
+                self.erase_grow = ((self.start.x,self.start.y),(event.x,event.y))
+                tmp__ = self.erase_grow
+                #print('draw  : ', tmp__, ' width = ', self.line_width)
+                for i in range(self.line_width):
+                    for j in range(self.line_width):
+                        tmp__ = (tuple(x+i for x in self.erase_grow[0]),tuple(x+j for x in self.erase_grow[1]))
+                        self.shape(tmp__, fill=None, outline=paint_color)
+                        #if(i==0 and j==0): print(i, ', ',j, '- ', tmp__)
+                #print(i, ', ',j, '- ', tmp__)
+                
             self.drawn = self.objectId
 
     def reset(self, event):
         self.old_x, self.old_y = None, None
+        self.erase_grow = None
         self.drawn = None
 
 
